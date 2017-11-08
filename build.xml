@@ -9,12 +9,6 @@
 
     <property name="main-class"  value="ant_helloworld.ant_helloworld"/>
 
-
-
-    <target name="clean">
-        <delete dir="${build.dir}"/>
-    </target>
-
     <target name="compile">
         <mkdir dir="${classes.dir}"/>
         <javac srcdir="${src.dir}" destdir="${classes.dir}"/>
