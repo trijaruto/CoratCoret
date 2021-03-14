@@ -1,0 +1,208 @@
+Answer
+
+1. Simple Database querying 
+
+	-- Drop table
+
+	DROP TABLE public."user"
+
+	CREATE TABLE public."user" (
+		id serial NOT NULL,
+		username varchar(100) NOT NULL,
+		parent serial NOT NULL
+	);
+
+	-- Permissions
+
+	ALTER TABLE public."user" OWNER TO postgres;
+	GRANT ALL ON TABLE public."user" TO postgres;
+
+	-- Insert Data
+
+	INSERT INTO public."user" (id, username, parent) VALUES(1, 'Ali ', 2);
+	INSERT INTO public."user" (id, username, parent) VALUES(2, 'Budi ', 0);
+	INSERT INTO public."user" (id, username, parent) VALUES(3, 'Cecep ', 1);
+
+	-- Query Data
+
+	SELECT 
+	usr.id AS ID,
+	usr.username AS UserName,
+	(SELECT usrp.username FROM bitstock.public."user" AS usrp WHERE usrp.id = usr.parent) AS ParentUserName
+	FROM bitstock.public."user" AS usr;
+	
+	
+2. Please write 2 services to read & process the data from the file downloaded from: 
+
+   -- Read
+    import java.io.File;
+	import java.io.FileNotFoundException;
+	import java.io.FileReader;
+	import java.util.Collections;
+	import java.util.List;
+	import java.util.Properties;
+
+	import au.com.bytecode.opencsv.CSVReader;
+	import au.com.bytecode.opencsv.bean.ColumnPositionMappingStrategy;
+	import au.com.bytecode.opencsv.bean.CsvToBean;
+
+	import org.apache.kafka.clients.producer.Producer;
+	import org.apache.kafka.clients.producer.KafkaProducer;
+	import org.apache.kafka.clients.producer.ProducerRecord;
+
+	public class CoratCoret {
+
+		public static void main(String[] args) {
+			// TODO Auto-generated method stub
+			String[] defaultExtension = { "txt" };
+			char defaultDelim = '|';		
+			File file = new File("d:\\test3.txt");
+			
+			
+			if(file.exists()){
+				List<CoratCoretBean> listCoratCoretBeans = extractCsv(file, defaultDelim);
+				produceToKafka(listCoratCoretBeans);			
+			}	
+		}
+		
+		
+		private static List<CoratCoretBean> extractCsv(File file, char sDelim) {
+			List<CoratCoretBean> l = Collections.emptyList();
+			try {
+				CSVReader reader = new CSVReader(new FileReader(file), sDelim);
+				ColumnPositionMappingStrategy<CoratCoretBean> strat = new ColumnPositionMappingStrategy<CoratCoretBean>();
+				strat.setType(CoratCoretBean.class);
+				String[] columns = new String[] { "Time", "Code", "Price" };
+				strat.setColumnMapping(columns);
+
+				CsvToBean<CoratCoretBean> csv = new CsvToBean<CoratCoretBean>();
+				l = csv.parse(strat, reader);
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			}
+			return l;
+		}
+		
+		
+		public void produceToKafka(List<CoratCoretBean> listCoratCoretBeans ){	
+			  String topicName = "bitstocktest";
+			  
+			  // create instance for properties to access producer configs   
+			  Properties props = new Properties();	      	   
+			  props.put("bootstrap.servers", "localhost:9092");	      	   
+			  props.put("acks", "all");	      
+			  props.put("retries", 0);	      
+			  props.put("batch.size", 16384);	      
+			  props.put("linger.ms", 1);	     
+			  props.put("buffer.memory", 33554432);
+			  
+			  props.put("key.serializer", "org.apache.kafka.common.serializa-tion.StringSerializer");
+				 
+			  props.put("value.serializer", "org.apache.kafka.common.serializa-tion.StringSerializer");
+			  
+			  Producer<String, String> producer = new KafkaProducer<String, String>(props);
+					
+			  for(int i = 0; i < listCoratCoretBeans.size(); i++)
+				 producer.send(new ProducerRecord<String, String>(topicName, Integer.toString(i), Integer.toString(i)));
+				 System.out.println(“Message sent successfully”);
+				 producer.close();
+		   }
+		}
+
+	}
+   
+   
+   -- Consumer
+    import org.apache.kafka.clients.consumer.ConsumerConfig;  
+	import org.apache.kafka.clients.consumer.ConsumerRecord;  
+	import org.apache.kafka.clients.consumer.ConsumerRecords;  
+	import org.apache.kafka.clients.consumer.KafkaConsumer;  
+	import org.apache.kafka.common.serialization.StringDeserializer;  
+	import org.slf4j.Logger;  
+	import org.slf4j.LoggerFactory;  
+	  
+	import java.time.Duration;  
+	import java.util.Arrays;  
+	import java.util.Collections;  
+	import java.util.Properties;  
+	  
+	public class consumer1 {  
+		public static void main(String[] args) {  
+			Logger logger= LoggerFactory.getLogger(consumer1.class.getName());  
+			String bootstrapServers="localhost:9092";  
+			String grp_id="third_app";  
+			String topic="my_first";  
+			//Creating consumer properties  
+			Properties properties=new Properties();  
+			properties.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,bootstrapServers);  
+			properties.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,   StringDeserializer.class.getName());  
+			properties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,StringDeserializer.class.getName());  
+			properties.setProperty(ConsumerConfig.GROUP_ID_CONFIG,grp_id);  
+			properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,"earliest");  
+			//creating consumer  
+			KafkaConsumer<String,String> consumer= new KafkaConsumer<String,String>(properties);  
+			//Subscribing  
+					consumer.subscribe(Arrays.asList(topic));  
+			//polling  
+			while(true){  
+				ConsumerRecords<String,String> records=consumer.poll(Duration.ofMillis(100));  
+				for(ConsumerRecord<String,String> record: records){  
+					logger.info("Key: "+ record.key() + ", Value:" +record.value());  
+					logger.info("Partition:" + record.partition()+",Offset:"+record.offset());  
+				}  
+	  
+	  
+			}  
+		}  
+	} 
+   
+   
+4.  Logic Test
+
+	package coratcoret;
+
+	import java.util.ArrayList;
+	import java.util.Arrays;
+	import java.util.HashMap;
+	import java.util.List;
+
+	public class Anagram {
+
+		public static void main(String[] args) {
+			// TODO Auto-generated method stub			
+			String[] anagram = {"kita", "atik", "tika", "aku", "kia", "makan", "kua"};	       
+			printAnagrams(anagram);        
+		}	
+		 
+		 
+		 private static void printAnagrams(String arr[])
+			{
+				HashMap<String, List<String> > map = new HashMap<String, List<String>>();
+				  
+				for (int i = 0; i < arr.length; i++) {
+					   
+					String word = arr[i];
+					char[] letters = word.toCharArray();
+					Arrays.sort(letters);
+					String newWord = new String(letters);
+					   
+					if (map.containsKey(newWord)) {	 
+						map.get(newWord).add(word);
+					}else {	 
+						List<String> words = new ArrayList<String>();
+						words.add(word);
+						map.put(newWord, words);
+					}
+				}
+						  
+				for (String s : map.keySet()) {
+					List<String> values = map.get(s);	            
+						System.out.print(values);	           
+				}
+			}
+
+	}
+   
+
+
+
